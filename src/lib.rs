@@ -62,7 +62,7 @@ mod slice_transform;
 
 pub use compaction_filter::Decision as CompactionDecision;
 pub use db::{DBCompactionStyle, DBCompressionType, DBIterator, DBRawIterator, DBRecoveryMode,
-             DBVector, ReadOptions, Direction, IteratorMode, Snapshot, WriteBatch,
+             DBPinnableSlice, DBVector, ReadOptions, Direction, IteratorMode, Snapshot, WriteBatch,
              new_bloom_filter};
 
 pub use slice_transform::SliceTransform;
