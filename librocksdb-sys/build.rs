@@ -76,6 +76,7 @@ fn build_rocksdb() {
 
     config.include(".");
     config.define("NDEBUG", Some("1"));
+    config.define("ROCKSDB_SUPPORT_THREAD_LOCAL", Some("1"));
 
     let mut lib_sources = include_str!("rocksdb_lib_sources.txt")
         .trim()
@@ -87,7 +88,7 @@ fn build_rocksdb() {
     lib_sources = lib_sources
         .iter()
         .cloned()
-        .filter(|file| *file != "util/build_version.cc")
+        .filter(|&file| file != "util/build_version.cc")
         .collect::<Vec<&'static str>>();
 
     if target.contains("x86_64") {
@@ -103,6 +104,10 @@ fn build_rocksdb() {
             config.define("HAVE_PCLMUL", Some("1"));
             config.flag_if_supported("-mpclmul");
         }
+    }
+
+    if target.contains("aarch64") {
+        lib_sources.push("util/crc32c_arm64.cc")
     }
 
     if target.contains("darwin") {

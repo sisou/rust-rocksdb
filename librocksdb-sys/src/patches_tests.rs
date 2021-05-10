@@ -14,13 +14,13 @@ fn rocksdb_options_load_from_file() {
     let mut errmsg: *mut libc::c_char = ptr::null_mut();
     let config_file = "rocksdb/tools/advisor/test/input_files/OPTIONS-000005";
     let result = unsafe {
-        let config_cstring = ffi::CString::new(config_file.as_bytes());
+        let config_cstring = ffi::CString::new(config_file.as_bytes()).unwrap();
         let env = crate::rocksdb_create_default_env();
         let cache = crate::rocksdb_cache_create_lru(1000);
         let ignore_unknown_options = false;
 
         let result = crate::rocksdb_options_load_from_file(
-            config_cstring.unwrap().as_ptr() as *const _,
+            config_cstring.as_ptr() as *const _,
             env,
             ignore_unknown_options,
             cache,

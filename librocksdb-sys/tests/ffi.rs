@@ -716,7 +716,7 @@ fn ffi() {
 
         StartPhase("approximate_sizes");
         {
-            let mut sizes: [uint64_t; 2] = [0, 0];
+            let mut sizes: [u64; 2] = [0, 0];
             let start: [*const c_char; 2] = [cstrp!("a"), cstrp!("k00000000000000010000")];
             let start_len: [size_t; 2] = [1, 21];
             let limit: [*const c_char; 2] = [cstrp!("k00000000000000010000"), cstrp!("z")];
@@ -746,7 +746,9 @@ fn ffi() {
                 limit.as_ptr(),
                 limit_len.as_ptr(),
                 sizes.as_mut_ptr(),
+                &mut err,
             );
+            CheckNoError!(err);
             CheckCondition!(sizes[0] > 0);
             CheckCondition!(sizes[1] > 0);
         }
