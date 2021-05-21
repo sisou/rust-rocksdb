@@ -422,8 +422,8 @@ impl<'a> Iterator for DBIterator<'a> {
     }
 }
 
-impl<'a> Into<DBRawIterator<'a>> for DBIterator<'a> {
-    fn into(self) -> DBRawIterator<'a> {
-        self.raw
+impl<'a> From<DBIterator<'a>> for DBRawIterator<'a> {
+    fn from(iter: DBIterator<'a>) -> DBRawIterator<'a> {
+        iter.raw
     }
 }

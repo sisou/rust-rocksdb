@@ -30,8 +30,10 @@ jobs:
     steps:
       - template: windows-dependencies.yml
         parameters:
-          rustup_toolchain: '1.41.0-x86_64-pc-windows-msvc'
+          rustup_toolchain: '1.51.0-x86_64-pc-windows-msvc'
       - checkout: self
         submodules: recursive
+      - script: cargo test --manifest-path=librocksdb-sys/Cargo.toml
+        displayName: Run binding tests
       - script: cargo test
         displayName: Run unit tests

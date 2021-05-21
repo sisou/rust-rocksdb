@@ -45,7 +45,7 @@ impl OptimisticTransaction {
     }
 
     /// Get Snapshot
-    pub fn snapshot<'a>(&'a self) -> OptimisticTransactionSnapshot<'a> {
+    pub fn snapshot(&self) -> OptimisticTransactionSnapshot<'_> {
         unsafe {
             let snapshot = ffi::rocksdb_transaction_get_snapshot(self.inner);
             OptimisticTransactionSnapshot {

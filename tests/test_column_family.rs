@@ -172,6 +172,7 @@ fn test_merge_operator() {
     }
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn test_provided_merge(
     _: &[u8],
     existing_val: Option<&[u8]>,

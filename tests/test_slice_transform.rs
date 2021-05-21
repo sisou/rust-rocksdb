@@ -11,7 +11,7 @@ pub fn test_slice_transform() {
         let b1: Box<[u8]> = key(b"bbb1");
         let b2: Box<[u8]> = key(b"bbb2");
 
-        fn first_three<'a>(k: &'a [u8]) -> &'a [u8] {
+        fn first_three(k: &[u8]) -> &[u8] {
             &k[..3]
         }
 

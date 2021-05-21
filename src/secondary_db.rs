@@ -41,7 +41,8 @@ impl SecondaryDB {
     }
 
     pub fn try_catch_up_with_primary(&self) -> Result<(), Error> {
-        Ok(unsafe { ffi_try!(ffi::rocksdb_try_catch_up_with_primary(self.inner,)) })
+        unsafe { ffi_try!(ffi::rocksdb_try_catch_up_with_primary(self.inner,)) };
+        Ok(())
     }
 }
 

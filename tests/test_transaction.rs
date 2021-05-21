@@ -241,17 +241,18 @@ pub fn get_for_update_cf() {
 
 #[test]
 pub fn test_transaction_merge() {
+    #[allow(clippy::unnecessary_wraps)]
     fn concat_merge(
         _new_key: &[u8],
         existing_val: Option<&[u8]>,
         operands: &mut MergeOperands,
     ) -> Option<Vec<u8>> {
         let mut result: Vec<u8> = Vec::with_capacity(operands.size_hint().0);
-        existing_val.map(|v| {
+        if let Some(v) = existing_val {
             for e in v {
                 result.push(*e)
             }
-        });
+        }
         for op in operands {
             for e in op {
                 result.push(*e)

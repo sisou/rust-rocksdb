@@ -80,7 +80,7 @@ fn build_rocksdb() {
 
     let mut lib_sources = include_str!("rocksdb_lib_sources.txt")
         .trim()
-        .split("\n")
+        .split('\n')
         .map(str::trim)
         .collect::<Vec<&'static str>>();
 
@@ -143,10 +143,14 @@ fn build_rocksdb() {
         lib_sources = lib_sources
             .iter()
             .cloned()
-            .filter(|file| match *file {
-                "port/port_posix.cc" | "env/env_posix.cc" | "env/fs_posix.cc"
-                | "env/io_posix.cc" => false,
-                _ => true,
+            .filter(|&file| {
+                !matches!(
+                    file,
+                    "port/port_posix.cc"
+                        | "env/env_posix.cc"
+                        | "env/fs_posix.cc"
+                        | "env/io_posix.cc"
+                )
             })
             .collect::<Vec<&'static str>>();
 
@@ -218,11 +222,8 @@ fn build_lz4() {
 
     compiler.opt_level(3);
 
-    match env::var("TARGET").unwrap().as_str() {
-        "i686-pc-windows-gnu" => {
-            compiler.flag("-fno-tree-vectorize");
-        }
-        _ => {}
+    if env::var("TARGET").unwrap().as_str() == "i686-pc-windows-gnu" {
+        compiler.flag("-fno-tree-vectorize");
     }
 
     compiler.compile("liblz4.a");

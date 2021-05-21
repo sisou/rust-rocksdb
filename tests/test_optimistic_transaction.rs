@@ -238,17 +238,18 @@ pub fn test_optimistic_transaction_snapshot() {
 
 #[test]
 pub fn test_optimistic_transaction_merge() {
+    #[allow(clippy::unnecessary_wraps)]
     fn concat_merge(
         _new_key: &[u8],
         existing_val: Option<&[u8]>,
         operands: &mut MergeOperands,
     ) -> Option<Vec<u8>> {
         let mut result: Vec<u8> = Vec::with_capacity(operands.size_hint().0);
-        existing_val.map(|v| {
+        if let Some(v) = existing_val {
             for e in v {
                 result.push(*e)
             }
-        });
+        }
         for op in operands {
             for e in op {
                 result.push(*e)
@@ -314,7 +315,7 @@ fn sync_transaction_test() {
         let wrapper_1 = wrapper.clone();
         let handler_1 = thread::spawn(move || wrapper_1.check("k1", "v1"));
 
-        let wrapper_2 = wrapper.clone();
+        let wrapper_2 = wrapper;
         let handler_2 = thread::spawn(move || wrapper_2.check("k2", "v2"));
 
         assert!(handler_1.join().unwrap());

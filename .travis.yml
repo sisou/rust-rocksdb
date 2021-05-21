@@ -1,6 +1,5 @@
 language: rust
-dist: xenial
-sudo: false
+dist: bionic
 
 os:
 - linux
@@ -9,24 +8,14 @@ os:
 rust:
   - 1.51.0
 
-addons:
-  apt:
-    sources:
-      - ubuntu-toolchain-r-test
-      - llvm-toolchain-trusty
-    packages:
-      - g++
-      - llvm-dev
-      - libclang-dev
-      - clang
-
-cache: cargo
-
 install:
   - rustup component add rustfmt
   - rustfmt -V
+  - rustup component add clippy
+  - cargo clippy --version
 
 script:
   - cargo fmt --all -- --check
+  - make clippy
   - cargo test --manifest-path=librocksdb-sys/Cargo.toml
-  - cargo test
+  - cargo test -- --skip test_iterator_outlive_db
