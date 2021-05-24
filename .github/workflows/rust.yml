@@ -58,12 +58,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        build: [Linux, macOS]
+        build: [Linux, macOS, windows-2016, windows-2019]
         include:
           - build: Linux
             os: ubuntu-latest
           - build: macOS
             os: macos-latest
+          - build: windows-2016
+            os: windows-2016
+          - build: windows-2019
+            os: windows-2019
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -76,6 +80,12 @@ jobs:
           target: ${{ matrix.target }}
           profile: minimal
           override: true
+      - name: Remove msys64 # Workaround to resolve link error with C:\msys64\mingw64\bin\libclang.dll
+        if: runner.os == 'Windows'
+        run: Remove-Item -LiteralPath "C:\msys64\" -Force -Recurse
+      - name: Install dependencies
+        if: runner.os == 'Windows'
+        run: choco install llvm -y
       - name: Run librocksdb-sys tests
         uses: actions-rs/cargo@v1
         with:
