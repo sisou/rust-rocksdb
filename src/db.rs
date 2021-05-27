@@ -256,8 +256,8 @@ fn errors_do_stuff() {
         match DB::destroy(&opts, &path) {
             Err(s) => {
                 let message = s.to_string();
-                assert!(message.find("IO error:").is_some());
-                assert!(message.find("/LOCK:").is_some());
+                assert!(message.contains("IO error:"));
+                assert!(message.contains("/LOCK:"));
             }
             Ok(_) => panic!("should fail"),
         }

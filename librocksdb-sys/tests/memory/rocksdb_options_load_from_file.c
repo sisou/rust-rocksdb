@@ -17,5 +17,10 @@ int main (int argc, char *argv[])
         cache,
         errptr);
 
+    rocksdb_env_destroy(env);
+    rocksdb_cache_destroy(cache);
+
+    rocksdb_column_family_descriptors_destroy(fullopts.cf_descs);
+    rocksdb_options_destroy(fullopts.db_opts);
     return 0;
 }

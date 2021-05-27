@@ -66,7 +66,7 @@ fn test_options_load_from_file() {
         assert!(res_1_2.is_ok(), "error: {}", res_1_2.unwrap_err());
         assert!(res_1_3.is_err(), "expect \"col_fam_B\"; has \"col_fam_A\"");
         let res_1_0 = fopts_1.clone().complete_column_families(cfs_0, true);
-        let res_1_3 = fopts_1.clone().complete_column_families(cfs_3, true);
+        let res_1_3 = fopts_1.complete_column_families(cfs_3, true);
         assert!(res_1_0.is_ok(), "error: {}", res_1_0.unwrap_err());
         assert!(res_1_3.is_ok(), "error: {}", res_1_3.unwrap_err());
 
@@ -80,7 +80,7 @@ fn test_options_load_from_file() {
         assert!(res_2_3.is_err(), "should not has \"col_fam_A\"");
         let res_2_0 = fopts_2.clone().complete_column_families(cfs_0, true);
         let res_2_1 = fopts_2.clone().complete_column_families(cfs_1, true);
-        let res_2_3 = fopts_2.clone().complete_column_families(cfs_3, true);
+        let res_2_3 = fopts_2.complete_column_families(cfs_3, true);
         assert!(res_2_0.is_ok(), "error: {}", res_2_0.unwrap_err());
         assert!(res_2_1.is_ok(), "error: {}", res_2_1.unwrap_err());
         assert!(res_2_3.is_ok(), "error: {}", res_2_3.unwrap_err());
@@ -88,7 +88,7 @@ fn test_options_load_from_file() {
 
     let path = TemporaryDBPath::new();
     {
-        let mut fopts = full_opts.clone();
+        let mut fopts = full_opts;
         let cf_names = &["col_fam_A", "col_fam_C"];
         assert!(fopts.complete_column_families(cf_names, false).is_ok());
         assert_eq!(fopts.cf_descriptors.len(), 3);

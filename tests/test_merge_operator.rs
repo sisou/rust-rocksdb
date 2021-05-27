@@ -18,6 +18,7 @@ use ckb_rocksdb::ops::{CompactRange, Delete, Get, Merge, Open, Put};
 use ckb_rocksdb::{DBCompactionStyle, MergeOperands, Options, TemporaryDBPath, DB};
 use rocksdb::merge_operator::MergeFn;
 
+#[allow(clippy::unnecessary_wraps)]
 fn test_provided_merge(
     _new_key: &[u8],
     existing_val: Option<&[u8]>,
@@ -102,6 +103,7 @@ struct ValueCounts {
     num_d: u32,
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn test_counting_partial_merge(
     _new_key: &[u8],
     _existing_val: Option<&[u8]>,
@@ -117,6 +119,7 @@ fn test_counting_partial_merge(
     Some(result)
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn test_counting_full_merge(
     _new_key: &[u8],
     existing_val: Option<&[u8]>,

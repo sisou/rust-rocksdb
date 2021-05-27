@@ -54,7 +54,7 @@ where
         let cf = self
             .get_mut_cfs()
             .remove(name)
-            .ok_or_else(|| Error::new(format!("Invalid column family: {}", name).to_owned()))?;
+            .ok_or_else(|| Error::new(format!("Invalid column family: {}", name)))?;
         unsafe {
             ffi_try!(ffi::rocksdb_drop_column_family(self.handle(), cf.inner,));
         }
