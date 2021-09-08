@@ -71,7 +71,7 @@ pub fn test_optimistic_transaction() {
 
         let trans_result = trans.commit();
 
-        assert_eq!(trans_result.is_ok(), true);
+        assert!(trans_result.is_ok());
 
         let trans2 = db.transaction_default();
 
@@ -79,13 +79,13 @@ pub fn test_optimistic_transaction() {
 
         iter.seek_to_first();
 
-        assert_eq!(iter.valid(), true);
+        assert!(iter.valid());
         assert_eq!(iter.key(), Some(b"k1".as_ref()));
         assert_eq!(iter.value(), Some(b"v1".as_ref()));
 
         iter.next();
 
-        assert_eq!(iter.valid(), true);
+        assert!(iter.valid());
         assert_eq!(iter.key(), Some(b"k2".as_ref()));
         assert_eq!(iter.value(), Some(b"v2".as_ref()));
 
@@ -93,7 +93,7 @@ pub fn test_optimistic_transaction() {
         iter.next(); // k4
         iter.next(); // invalid!
 
-        assert_eq!(iter.valid(), false);
+        assert!(!iter.valid());
         assert_eq!(iter.key(), None);
         assert_eq!(iter.value(), None);
 

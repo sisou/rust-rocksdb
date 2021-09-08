@@ -28,8 +28,8 @@ fn open_ttl_db_cf() {
         let db = DBWithTTL::open_cf(&opts, &path, &["cf1"]).unwrap();
         let cf1 = db.cf_handle("cf1").unwrap();
 
-        assert!(db.put_cf(&cf1, b"k1", b"v1111").is_ok());
-        let r: Result<Option<DBVector>, Error> = db.get_cf(&cf1, b"k1");
+        assert!(db.put_cf(cf1, b"k1", b"v1111").is_ok());
+        let r: Result<Option<DBVector>, Error> = db.get_cf(cf1, b"k1");
 
         assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v1111");
     }
@@ -51,8 +51,8 @@ fn open_ttl_db_cf_with_descriptor_by_default() {
             .unwrap();
         let cf1 = db.cf_handle("cf1").unwrap();
 
-        assert!(db.put_cf(&cf1, b"k1", b"v1111").is_ok());
-        let r: Result<Option<DBVector>, Error> = db.get_cf(&cf1, b"k1");
+        assert!(db.put_cf(cf1, b"k1", b"v1111").is_ok());
+        let r: Result<Option<DBVector>, Error> = db.get_cf(cf1, b"k1");
 
         assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v1111");
     }
@@ -78,8 +78,8 @@ fn open_ttl_db_cf_with_descriptor_by_columns() {
             .unwrap();
         let cf1 = db.cf_handle("cf1").unwrap();
 
-        assert!(db.put_cf(&cf1, b"k1", b"v1111").is_ok());
-        let r: Result<Option<DBVector>, Error> = db.get_cf(&cf1, b"k1");
+        assert!(db.put_cf(cf1, b"k1", b"v1111").is_ok());
+        let r: Result<Option<DBVector>, Error> = db.get_cf(cf1, b"k1");
 
         assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v1111");
     }

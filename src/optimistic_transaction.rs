@@ -49,7 +49,7 @@ impl OptimisticTransaction {
         unsafe {
             let snapshot = ffi::rocksdb_transaction_get_snapshot(self.inner);
             OptimisticTransactionSnapshot {
-                txn: &self,
+                txn: self,
                 inner: snapshot,
             }
         }

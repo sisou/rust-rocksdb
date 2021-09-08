@@ -63,7 +63,7 @@ pub trait OpenRaw: Sized {
             "Failed to convert path to CString when opening database.",
         )?;
 
-        let mut cfs = mem::replace(&mut input.column_families, vec![]);
+        let mut cfs = mem::take(&mut input.column_families);
 
         if !cfs.is_empty() && !cfs.iter().any(|cf| cf.name == "default") {
             cfs.push(ColumnFamilyDescriptor {

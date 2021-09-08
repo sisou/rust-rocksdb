@@ -240,12 +240,31 @@ fn counting_merge_test() {
     h1.join().unwrap();
     match db.get(b"k2") {
         Ok(Some(value)) => match from_slice::<ValueCounts>(&*value) {
-            Some(v) => unsafe {
-                assert_eq!(v.num_a, 1000);
-                assert_eq!(v.num_b, 500);
-                assert_eq!(v.num_c, 2000);
-                assert_eq!(v.num_d, 500);
-            },
+            Some(v) => {
+                let num_a = {
+                    let ptr = std::ptr::addr_of!(v.num_a);
+                    unsafe { ptr.read_unaligned() }
+                };
+                assert_eq!(num_a, 1000);
+
+                let num_b = {
+                    let ptr = std::ptr::addr_of!(v.num_b);
+                    unsafe { ptr.read_unaligned() }
+                };
+                assert_eq!(num_b, 500);
+
+                let num_c = {
+                    let ptr = std::ptr::addr_of!(v.num_c);
+                    unsafe { ptr.read_unaligned() }
+                };
+                assert_eq!(num_c, 2000);
+
+                let num_d = {
+                    let ptr = std::ptr::addr_of!(v.num_d);
+                    unsafe { ptr.read_unaligned() }
+                };
+                assert_eq!(num_d, 500);
+            }
             None => panic!("Failed to get ValueCounts from db"),
         },
         Err(e) => panic!("error reading value {:?}", e),
@@ -253,12 +272,31 @@ fn counting_merge_test() {
     }
     match db.get(b"k1") {
         Ok(Some(value)) => match from_slice::<ValueCounts>(&*value) {
-            Some(v) => unsafe {
-                assert_eq!(v.num_a, 3);
-                assert_eq!(v.num_b, 2);
-                assert_eq!(v.num_c, 0);
-                assert_eq!(v.num_d, 1);
-            },
+            Some(v) => {
+                let num_a = {
+                    let ptr = std::ptr::addr_of!(v.num_a);
+                    unsafe { ptr.read_unaligned() }
+                };
+                assert_eq!(num_a, 3);
+
+                let num_b = {
+                    let ptr = std::ptr::addr_of!(v.num_b);
+                    unsafe { ptr.read_unaligned() }
+                };
+                assert_eq!(num_b, 2);
+
+                let num_c = {
+                    let ptr = std::ptr::addr_of!(v.num_c);
+                    unsafe { ptr.read_unaligned() }
+                };
+                assert_eq!(num_c, 0);
+
+                let num_d = {
+                    let ptr = std::ptr::addr_of!(v.num_d);
+                    unsafe { ptr.read_unaligned() }
+                };
+                assert_eq!(num_d, 1);
+            }
             None => panic!("Failed to get ValueCounts from db"),
         },
         Err(e) => panic!("error reading value {:?}", e),

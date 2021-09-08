@@ -21,7 +21,7 @@ pub struct DBWithTTL {
 
 impl DBWithTTL {
     pub fn path(&self) -> &Path {
-        &self.path.as_path()
+        self.path.as_path()
     }
 
     pub fn create_cf_with_ttl<N: AsRef<str>>(
