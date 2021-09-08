@@ -11,6 +11,8 @@ exclude = [
     ".gitignore",
     "*.yml",
     "deploy.sh",
+    "snappy/testdata",
+    "*/examples",
     "test/**/*",
     "*.md"
 ]
