@@ -1,6 +1,6 @@
 #include <stdbool.h>
 
-#include <rocksdb/c.h>
+#include "../rocksdb/include/rocksdb/c.h"
 
 #ifdef __cplusplus
 extern "C" {
