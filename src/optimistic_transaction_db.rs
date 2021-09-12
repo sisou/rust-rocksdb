@@ -99,7 +99,7 @@ impl GetColumnFamilys for OptimisticTransactionDB {
 
 impl OptimisticTransactionDB {
     pub fn path(&self) -> &Path {
-        &self.path.as_path()
+        self.path.as_path()
     }
 
     pub fn base_db_ptr(&self) -> *mut ffi::rocksdb_t {

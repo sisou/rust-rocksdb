@@ -76,6 +76,7 @@ mod db_iterator;
 mod db_options;
 mod db_pinnable_slice;
 mod db_vector;
+mod db_with_ttl;
 mod handle;
 pub mod merge_operator;
 mod open_raw;
@@ -100,6 +101,7 @@ pub use crate::db_iterator::{DBIterator, DBRawIterator, Direction, IteratorMode}
 pub use crate::db_options::{DBCompactionStyle, DBCompressionType, DBRecoveryMode, ReadOptions};
 pub use crate::db_pinnable_slice::DBPinnableSlice;
 pub use crate::db_vector::DBVector;
+pub use crate::db_with_ttl::{DBWithTTL, TTLOpenDescriptor};
 pub use crate::handle::{ConstHandle, Handle};
 pub use crate::options::FullOptions;
 pub use crate::read_only_db::ReadOnlyDB;

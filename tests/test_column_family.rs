@@ -146,7 +146,7 @@ fn test_merge_operator() {
         };
         let cf1 = db.cf_handle("cf1").unwrap();
         assert!(db.put_cf(cf1, b"k1", b"v1").is_ok());
-        assert!(db.get_cf(&cf1, b"k1").unwrap().unwrap().to_utf8().unwrap() == "v1");
+        assert!(db.get_cf(cf1, b"k1").unwrap().unwrap().to_utf8().unwrap() == "v1");
         let p = db.put_cf(cf1, b"k1", b"a");
         assert!(p.is_ok());
         db.merge_cf(cf1, b"k1", b"b").unwrap();
@@ -165,7 +165,7 @@ fn test_merge_operator() {
             _ => panic!("value not present!"),
         }
 
-        let _ = db.get_cf(&cf1, b"k1");
+        let _ = db.get_cf(cf1, b"k1");
         // TODO assert!(r.unwrap().to_utf8().unwrap() == "abcdefgh");
         assert!(db.delete(b"k1").is_ok());
         assert!(db.get(b"k1").unwrap().is_none());

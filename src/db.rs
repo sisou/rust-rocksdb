@@ -147,7 +147,7 @@ impl DB {
     }
 
     pub fn path(&self) -> &Path {
-        &self.path.as_path()
+        self.path.as_path()
     }
 
     pub fn snapshot(&self) -> Snapshot<'_> {

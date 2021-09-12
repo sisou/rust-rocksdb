@@ -25,7 +25,7 @@ pub struct TransactionDB {
 
 impl TransactionDB {
     pub fn path(&self) -> &Path {
-        &self.path.as_path()
+        self.path.as_path()
     }
 }
 

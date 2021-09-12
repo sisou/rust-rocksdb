@@ -37,7 +37,7 @@ pub struct ReadOnlyDB {
 
 impl ReadOnlyDB {
     pub fn path(&self) -> &Path {
-        &self.path.as_path()
+        self.path.as_path()
     }
 }
 

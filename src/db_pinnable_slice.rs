@@ -16,6 +16,7 @@
 use libc::size_t;
 
 use crate::ffi;
+use std::fmt;
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::slice;
@@ -78,5 +79,11 @@ impl<'a> DBPinnableSlice<'a> {
             ptr,
             db: PhantomData,
         }
+    }
+}
+
+impl<'a> fmt::Debug for DBPinnableSlice<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.deref())
     }
 }

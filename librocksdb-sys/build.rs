@@ -1,5 +1,6 @@
 use std::env;
 use std::fs;
+use std::path::PathBuf;
 
 fn link(name: &str, bundled: bool) {
     use std::env::var;
@@ -25,19 +26,21 @@ fn fail_on_empty_directory(name: &str) {
     }
 }
 
-// fn bindgen_rocksdb() {
-//     let bindings = bindgen::Builder::default()
-//         .header("rocksdb/include/rocksdb/c.h")
-//         .blacklist_type("max_align_t") // https://github.com/rust-lang-nursery/rust-bindgen/issues/550
-//         .ctypes_prefix("libc")
-//         .generate()
-//         .expect("unable to generate rocksdb bindings");
+fn bindgen_rocksdb() {
+    let bindings = bindgen::Builder::default()
+        .header("patches/rocksdb.h")
+        .derive_debug(false)
+        .blocklist_type("max_align_t") // https://github.com/rust-lang-nursery/rust-bindgen/issues/550
+        .ctypes_prefix("libc")
+        .size_t_is_usize(true)
+        .generate()
+        .expect("unable to generate rocksdb bindings");
 
-//     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
-//     bindings
-//         .write_to_file(out_path.join("bindings.rs"))
-//         .expect("unable to write rocksdb bindings");
-// }
+    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+    bindings
+        .write_to_file(out_path.join("bindings.rs"))
+        .expect("unable to write rocksdb bindings");
+}
 
 fn build_rocksdb() {
     let target = env::var("TARGET").unwrap();
@@ -76,7 +79,6 @@ fn build_rocksdb() {
 
     config.include(".");
     config.define("NDEBUG", Some("1"));
-    config.define("ROCKSDB_SUPPORT_THREAD_LOCAL", Some("1"));
 
     let mut lib_sources = include_str!("rocksdb_lib_sources.txt")
         .trim()
@@ -95,14 +97,24 @@ fn build_rocksdb() {
         // This is needed to enable hardware CRC32C. Technically, SSE 4.2 is
         // only available since Intel Nehalem (about 2010) and AMD Bulldozer
         // (about 2011).
-        config.define("HAVE_SSE42", Some("1"));
-        config.flag_if_supported("-msse2");
-        config.flag_if_supported("-msse4.1");
-        config.flag_if_supported("-msse4.2");
+        let target_feature = env::var("CARGO_CFG_TARGET_FEATURE").unwrap();
+        let target_features: Vec<_> = target_feature.split(",").collect();
+        if target_features.contains(&"sse2") {
+            config.flag_if_supported("-msse2");
+        }
+        if target_features.contains(&"sse4.1") {
+            config.flag_if_supported("-msse4.1");
+        }
+        if target_features.contains(&"sse4.2") {
+            config.flag_if_supported("-msse4.2");
+            config.define("HAVE_SSE42", Some("1"));
+        }
 
         if !target.contains("android") {
-            config.define("HAVE_PCLMUL", Some("1"));
-            config.flag_if_supported("-mpclmul");
+            if target_features.contains(&"pclmulqdq") {
+                config.define("HAVE_PCLMUL", Some("1"));
+                config.flag_if_supported("-mpclmul");
+            }
         }
     }
 
@@ -111,41 +123,46 @@ fn build_rocksdb() {
     }
 
     if target.contains("darwin") {
-        config.define("OS_MACOSX", Some("1"));
-        config.define("ROCKSDB_PLATFORM_POSIX", Some("1"));
-        config.define("ROCKSDB_LIB_IO_POSIX", Some("1"));
+        config.define("OS_MACOSX", None);
+        config.define("ROCKSDB_PLATFORM_POSIX", None);
+        config.define("ROCKSDB_LIB_IO_POSIX", None);
     } else if target.contains("android") {
-        config.define("OS_ANDROID", Some("1"));
-        config.define("ROCKSDB_PLATFORM_POSIX", Some("1"));
-        config.define("ROCKSDB_LIB_IO_POSIX", Some("1"));
+        config.define("OS_ANDROID", None);
+        config.define("ROCKSDB_PLATFORM_POSIX", None);
+        config.define("ROCKSDB_LIB_IO_POSIX", None);
     } else if target.contains("linux") {
-        config.define("OS_LINUX", Some("1"));
-        config.define("ROCKSDB_PLATFORM_POSIX", Some("1"));
-        config.define("ROCKSDB_LIB_IO_POSIX", Some("1"));
+        config.define("OS_LINUX", None);
+        config.define("ROCKSDB_PLATFORM_POSIX", None);
+        config.define("ROCKSDB_LIB_IO_POSIX", None);
     } else if target.contains("freebsd") {
-        config.define("OS_FREEBSD", Some("1"));
-        config.define("ROCKSDB_PLATFORM_POSIX", Some("1"));
-        config.define("ROCKSDB_LIB_IO_POSIX", Some("1"));
+        config.define("OS_FREEBSD", None);
+        config.define("ROCKSDB_PLATFORM_POSIX", None);
+        config.define("ROCKSDB_LIB_IO_POSIX", None);
     } else if target.contains("windows") {
         link("rpcrt4", false);
         link("shlwapi", false);
-        config.define("OS_WIN", Some("1"));
-        config.define("ROCKSDB_WINDOWS_UTF8_FILENAMES", Some("1"));
+        config.define("DWIN32", None);
+        config.define("OS_WIN", None);
+        config.define("_MBCS", None);
+        config.define("WIN64", None);
+        config.define("NOMINMAX", None);
+        config.define("WITH_WINDOWS_UTF8_FILENAMES", "ON");
+
         if &target == "x86_64-pc-windows-gnu" {
             // Tell MinGW to create localtime_r wrapper of localtime_s function.
-            config.define("_POSIX_C_SOURCE", None);
+            config.define("_POSIX_C_SOURCE", Some("1"));
             // Tell MinGW to use at least Windows Vista headers instead of the ones of Windows XP.
             // (This is minimum supported version of rocksdb)
-            config.define("_WIN32_WINNT", Some("0x0600"));
+            config.define("_WIN32_WINNT", Some("_WIN32_WINNT_VISTA"));
         }
 
         // Remove POSIX-specific sources
         lib_sources = lib_sources
             .iter()
             .cloned()
-            .filter(|&file| {
+            .filter(|file| {
                 !matches!(
-                    file,
+                    *file,
                     "port/port_posix.cc"
                         | "env/env_posix.cc"
                         | "env/fs_posix.cc"
@@ -163,10 +180,12 @@ fn build_rocksdb() {
         lib_sources.push("port/win/win_thread.cc");
     }
 
+    config.define("ROCKSDB_SUPPORT_THREAD_LOCAL", None);
+
     if target.contains("msvc") {
         config.flag("-EHsc");
     } else {
-        config.flag("-std=c++11");
+        config.flag(&cxx_standard());
         // this was breaking the build on travis due to
         // > 4mb of warnings emitted.
         config.flag("-Wno-unused-parameter");
@@ -187,16 +206,18 @@ fn build_rocksdb() {
 fn build_snappy() {
     let target = env::var("TARGET").unwrap();
     let endianness = env::var("CARGO_CFG_TARGET_ENDIAN").unwrap();
-
     let mut config = cc::Build::new();
+
     config.include("snappy/");
     config.include(".");
-
     config.define("NDEBUG", Some("1"));
+    config.extra_warnings(false);
 
     if target.contains("msvc") {
         config.flag("-EHsc");
     } else {
+        // Snappy requires C++11.
+        // See: https://github.com/google/snappy/blob/master/CMakeLists.txt#L32-L38
         config.flag("-std=c++11");
     }
 
@@ -222,7 +243,9 @@ fn build_lz4() {
 
     compiler.opt_level(3);
 
-    if env::var("TARGET").unwrap().as_str() == "i686-pc-windows-gnu" {
+    let target = env::var("TARGET").unwrap();
+
+    if &target == "i686-pc-windows-gnu" {
         compiler.flag("-fno-tree-vectorize");
     }
 
@@ -252,6 +275,7 @@ fn build_zstd() {
     }
 
     compiler.opt_level(3);
+    compiler.extra_warnings(false);
 
     compiler.define("ZSTD_LIB_DEPRECATED", Some("0"));
     compiler.compile("libzstd.a");
@@ -271,6 +295,7 @@ fn build_zlib() {
 
     compiler.flag_if_supported("-Wno-implicit-function-declaration");
     compiler.opt_level(3);
+    compiler.extra_warnings(false);
     compiler.compile("libz.a");
 }
 
@@ -292,10 +317,17 @@ fn build_bzip2() {
 
     compiler.extra_warnings(false);
     compiler.opt_level(3);
+    compiler.extra_warnings(false);
     compiler.compile("libbz2.a");
 }
 
 fn try_to_find_and_link_lib(lib_name: &str) -> bool {
+    if let Ok(v) = env::var(&format!("{}_COMPILE", lib_name)) {
+        if v.to_lowercase() == "true" || v == "1" {
+            return false;
+        }
+    }
+
     if let Ok(lib_dir) = env::var(&format!("{}_LIB_DIR", lib_name)) {
         println!("cargo:rustc-link-search=native={}", lib_dir);
         let mode = match env::var_os(&format!("{}_STATIC", lib_name)) {
@@ -308,7 +340,19 @@ fn try_to_find_and_link_lib(lib_name: &str) -> bool {
     false
 }
 
+fn cxx_standard() -> String {
+    env::var("ROCKSDB_CXX_STD").map_or("-std=c++11".to_owned(), |cxx_std| {
+        if !cxx_std.starts_with("-std=") {
+            format!("-std={}", cxx_std)
+        } else {
+            cxx_std
+        }
+    })
+}
+
 fn main() {
+    bindgen_rocksdb();
+
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=rocksdb/");
     println!("cargo:rerun-if-changed=patches/");

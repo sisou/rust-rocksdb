@@ -37,7 +37,7 @@ pub struct SecondaryDB {
 
 impl SecondaryDB {
     pub fn path(&self) -> &Path {
-        &self.path.as_path()
+        self.path.as_path()
     }
 
     pub fn try_catch_up_with_primary(&self) -> Result<(), Error> {
