@@ -41,16 +41,9 @@ impl ReadOnlyDB {
     }
 }
 
+#[derive(Default)]
 pub struct ReadOnlyOpenDescriptor {
     error_if_log_file_exists: bool,
-}
-
-impl Default for ReadOnlyOpenDescriptor {
-    fn default() -> Self {
-        ReadOnlyOpenDescriptor {
-            error_if_log_file_exists: false,
-        }
-    }
 }
 
 impl ops::Open for ReadOnlyDB {}
