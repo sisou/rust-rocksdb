@@ -13,12 +13,26 @@
 // limitations under the License.
 //
 
-use crate::ffi;
-use crate::{Error, DB};
+use crate::{ffi, Error, DB};
 
-use libc::c_int;
+use libc::{c_int, c_uchar};
 use std::ffi::CString;
 use std::path::Path;
+
+/// Represents information of a backup including timestamp of the backup
+/// and the size (please note that sum of all backups' sizes is bigger than the actual
+/// size of the backup directory because some data is shared by multiple backups).
+/// Backups are identified by their always-increasing IDs.
+pub struct BackupEngineInfo {
+    /// Timestamp of the backup
+    pub timestamp: i64,
+    /// ID of the backup
+    pub backup_id: u32,
+    /// Size of the backup
+    pub size: u64,
+    /// Number of files related to the backup
+    pub num_files: u32,
+}
 
 pub struct BackupEngine {
     inner: *mut ffi::rocksdb_backup_engine_t,
@@ -34,36 +48,52 @@ pub struct RestoreOptions {
 
 impl BackupEngine {
     /// Open a backup engine with the specified options.
-    pub fn open<P: AsRef<Path>>(
-        opts: &BackupEngineOptions,
-        path: P,
-    ) -> Result<BackupEngine, Error> {
+    pub fn open<P: AsRef<Path>>(opts: &BackupEngineOptions, path: P) -> Result<Self, Error> {
         let path = path.as_ref();
-        let cpath = match CString::new(path.to_string_lossy().as_bytes()) {
-            Ok(c) => c,
-            Err(_) => {
-                return Err(Error::new(
-                    "Failed to convert path to CString \
+        let cpath = if let Ok(e) = CString::new(path.to_string_lossy().as_bytes()) {
+            e
+        } else {
+            return Err(Error::new(
+                "Failed to convert path to CString \
                      when opening backup engine"
-                        .to_owned(),
-                ));
-            }
+                    .to_owned(),
+            ));
         };
 
         let be: *mut ffi::rocksdb_backup_engine_t;
-        unsafe { be = ffi_try!(ffi::rocksdb_backup_engine_open(opts.inner, cpath.as_ptr(),)) }
+        unsafe {
+            be = ffi_try!(ffi::rocksdb_backup_engine_open(opts.inner, cpath.as_ptr()));
+        }
 
         if be.is_null() {
             return Err(Error::new("Could not initialize backup engine.".to_owned()));
         }
 
-        Ok(BackupEngine { inner: be })
+        Ok(Self { inner: be })
     }
 
+    /// Captures the state of the database in the latest backup.
+    ///
+    /// Note: no flush before backup is performed. User might want to
+    /// use `create_new_backup_flush` instead.
     pub fn create_new_backup(&mut self, db: &DB) -> Result<(), Error> {
+        self.create_new_backup_flush(db, false)
+    }
+
+    /// Captures the state of the database in the latest backup.
+    ///
+    /// Set flush_before_backup=true to avoid losing unflushed key/value
+    /// pairs from the memtable.
+    pub fn create_new_backup_flush(
+        &mut self,
+        db: &DB,
+        flush_before_backup: bool,
+    ) -> Result<(), Error> {
         unsafe {
-            ffi_try!(ffi::rocksdb_backup_engine_create_new_backup(
-                self.inner, db.inner,
+            ffi_try!(ffi::rocksdb_backup_engine_create_new_backup_flush(
+                self.inner,
+                db.inner,
+                flush_before_backup as c_uchar,
             ));
             Ok(())
         }
@@ -90,7 +120,7 @@ impl BackupEngine {
     /// # Examples
     ///
     /// ```ignore
-    /// use ckb_rocksdb::backup::{BackupEngine, BackupEngineOptions};
+    /// use rocksdb::backup::{BackupEngine, BackupEngineOptions};
     /// let backup_opts = BackupEngineOptions::default();
     /// let mut backup_engine = BackupEngine::open(&backup_opts, &backup_path).unwrap();
     /// let mut restore_option = rocksdb::backup::RestoreOptions::default();
@@ -108,27 +138,25 @@ impl BackupEngine {
         opts: &RestoreOptions,
     ) -> Result<(), Error> {
         let db_dir = db_dir.as_ref();
-        let c_db_dir = match CString::new(db_dir.to_string_lossy().as_bytes()) {
-            Ok(c) => c,
-            Err(_) => {
-                return Err(Error::new(
-                    "Failed to convert db_dir to CString \
+        let c_db_dir = if let Ok(c) = CString::new(db_dir.to_string_lossy().as_bytes()) {
+            c
+        } else {
+            return Err(Error::new(
+                "Failed to convert db_dir to CString \
                      when restoring from latest backup"
-                        .to_owned(),
-                ));
-            }
+                    .to_owned(),
+            ));
         };
 
         let wal_dir = wal_dir.as_ref();
-        let c_wal_dir = match CString::new(wal_dir.to_string_lossy().as_bytes()) {
-            Ok(c) => c,
-            Err(_) => {
-                return Err(Error::new(
-                    "Failed to convert wal_dir to CString \
+        let c_wal_dir = if let Ok(c) = CString::new(wal_dir.to_string_lossy().as_bytes()) {
+            c
+        } else {
+            return Err(Error::new(
+                "Failed to convert wal_dir to CString \
                      when restoring from latest backup"
-                        .to_owned(),
-                ));
-            }
+                    .to_owned(),
+            ));
         };
 
         unsafe {
@@ -140,6 +168,96 @@ impl BackupEngine {
             ));
         }
         Ok(())
+    }
+
+    /// Restore from a specified backup
+    ///
+    /// The specified backup id should be passed in as an additional parameter.
+    pub fn restore_from_backup<D: AsRef<Path>, W: AsRef<Path>>(
+        &mut self,
+        db_dir: D,
+        wal_dir: W,
+        opts: &RestoreOptions,
+        backup_id: u32,
+    ) -> Result<(), Error> {
+        let db_dir = db_dir.as_ref();
+        let c_db_dir = if let Ok(c) = CString::new(db_dir.to_string_lossy().as_bytes()) {
+            c
+        } else {
+            return Err(Error::new(
+                "Failed to convert db_dir to CString \
+                     when restoring from latest backup"
+                    .to_owned(),
+            ));
+        };
+
+        let wal_dir = wal_dir.as_ref();
+        let c_wal_dir = if let Ok(c) = CString::new(wal_dir.to_string_lossy().as_bytes()) {
+            c
+        } else {
+            return Err(Error::new(
+                "Failed to convert wal_dir to CString \
+                     when restoring from latest backup"
+                    .to_owned(),
+            ));
+        };
+
+        unsafe {
+            ffi_try!(ffi::rocksdb_backup_engine_restore_db_from_backup(
+                self.inner,
+                c_db_dir.as_ptr(),
+                c_wal_dir.as_ptr(),
+                opts.inner,
+                backup_id,
+            ));
+        }
+        Ok(())
+    }
+
+    /// Checks that each file exists and that the size of the file matches our
+    /// expectations. it does not check file checksum.
+    ///
+    /// If this BackupEngine created the backup, it compares the files' current
+    /// sizes against the number of bytes written to them during creation.
+    /// Otherwise, it compares the files' current sizes against their sizes when
+    /// the BackupEngine was opened.
+    pub fn verify_backup(&self, backup_id: u32) -> Result<(), Error> {
+        unsafe {
+            ffi_try!(ffi::rocksdb_backup_engine_verify_backup(
+                self.inner, backup_id,
+            ));
+        }
+        Ok(())
+    }
+
+    /// Get a list of all backups together with information on timestamp of the backup
+    /// and the size (please note that sum of all backups' sizes is bigger than the actual
+    /// size of the backup directory because some data is shared by multiple backups).
+    /// Backups are identified by their always-increasing IDs.
+    ///
+    /// You can perform this function safely, even with other BackupEngine performing
+    /// backups on the same directory
+    pub fn get_backup_info(&self) -> Vec<BackupEngineInfo> {
+        unsafe {
+            let i = ffi::rocksdb_backup_engine_get_backup_info(self.inner);
+
+            let n = ffi::rocksdb_backup_engine_info_count(i);
+
+            let mut info = Vec::with_capacity(n as usize);
+            for index in 0..n {
+                info.push(BackupEngineInfo {
+                    timestamp: ffi::rocksdb_backup_engine_info_timestamp(i, index),
+                    backup_id: ffi::rocksdb_backup_engine_info_backup_id(i, index),
+                    size: ffi::rocksdb_backup_engine_info_size(i, index),
+                    num_files: ffi::rocksdb_backup_engine_info_number_files(i, index),
+                });
+            }
+
+            // destroy backup info object
+            ffi::rocksdb_backup_engine_info_destroy(i);
+
+            info
+        }
     }
 }
 
@@ -156,25 +274,25 @@ impl RestoreOptions {
 }
 
 impl Default for BackupEngineOptions {
-    fn default() -> BackupEngineOptions {
+    fn default() -> Self {
         unsafe {
             let opts = ffi::rocksdb_options_create();
             if opts.is_null() {
                 panic!("Could not create RocksDB backup options");
             }
-            BackupEngineOptions { inner: opts }
+            Self { inner: opts }
         }
     }
 }
 
 impl Default for RestoreOptions {
-    fn default() -> RestoreOptions {
+    fn default() -> Self {
         unsafe {
             let opts = ffi::rocksdb_restore_options_create();
             if opts.is_null() {
                 panic!("Could not create RocksDB restore options");
             }
-            RestoreOptions { inner: opts }
+            Self { inner: opts }
         }
     }
 }
@@ -204,35 +322,89 @@ impl Drop for RestoreOptions {
 }
 
 #[test]
-fn backup_restore() {
-    use crate::{prelude::*, TemporaryDBPath};
+fn restore_from_latest() {
+    use crate::ops::{Get, Open, Put};
+    use crate::TemporaryDBPath;
+
     // create backup
     let path = TemporaryDBPath::new();
-    let backup_path = TemporaryDBPath::new();
     let restore_path = TemporaryDBPath::new();
-
     {
         let db = DB::open_default(&path).unwrap();
-        let p = db.put(b"k1", b"v1111");
-        assert!(p.is_ok());
-        let r: Result<Option<DBVector>, Error> = db.get(b"k1");
-        assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v1111");
+        assert!(db.put(b"k1", b"v1111").is_ok());
+        let value = db.get(b"k1");
+        assert_eq!(value.unwrap().unwrap().to_utf8().unwrap(), "v1111");
+        {
+            let backup_path = TemporaryDBPath::new();
+            let backup_opts = BackupEngineOptions::default();
+            let mut backup_engine = BackupEngine::open(&backup_opts, &backup_path).unwrap();
+            assert!(backup_engine.create_new_backup(&db).is_ok());
 
-        let backup_opts = BackupEngineOptions::default();
-        let mut backup_engine = BackupEngine::open(&backup_opts, &backup_path).unwrap();
+            // check backup info
+            let info = backup_engine.get_backup_info();
+            assert!(!info.is_empty());
+            info.iter().for_each(|i| {
+                assert!(backup_engine.verify_backup(i.backup_id).is_ok());
+                assert!(i.size > 0);
+            });
 
-        let r = backup_engine.create_new_backup(&db);
-        assert!(r.is_ok());
+            let mut restore_option = RestoreOptions::default();
+            restore_option.set_keep_log_files(false); // true to keep log files
+            let restore_status = backup_engine.restore_from_latest_backup(
+                &restore_path,
+                &restore_path,
+                &restore_option,
+            );
+            assert!(restore_status.is_ok());
 
-        let mut restore_option = RestoreOptions::default();
-        restore_option.set_keep_log_files(true); // true to keep log files
-        let restore_status =
-            backup_engine.restore_from_latest_backup(&restore_path, &restore_path, &restore_option);
-        assert!(restore_status.is_ok());
+            let db_restore = DB::open_default(&restore_path).unwrap();
+            let value = db_restore.get(b"k1");
+            assert_eq!(value.unwrap().unwrap().to_utf8().unwrap(), "v1111");
+        }
+    }
+}
 
-        let db_restore = DB::open_default(&restore_path).unwrap();
+#[test]
+fn restore_from_backup() {
+    use crate::ops::{Get, Open, Put};
+    use crate::TemporaryDBPath;
 
-        let r: Result<Option<DBVector>, Error> = db_restore.get(b"k1");
-        assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v1111");
+    // create backup
+    let path = TemporaryDBPath::new();
+    let restore_path = TemporaryDBPath::new();
+    {
+        let db = DB::open_default(&path).unwrap();
+        assert!(db.put(b"k1", b"v1111").is_ok());
+        let value = db.get(b"k1");
+        assert_eq!(value.unwrap().unwrap().to_utf8().unwrap(), "v1111");
+        {
+            let backup_path = TemporaryDBPath::new();
+            let backup_opts = BackupEngineOptions::default();
+            let mut backup_engine = BackupEngine::open(&backup_opts, &backup_path).unwrap();
+            assert!(backup_engine.create_new_backup(&db).is_ok());
+
+            // check backup info
+            let info = backup_engine.get_backup_info();
+            assert!(!info.is_empty());
+            info.iter().for_each(|i| {
+                assert!(backup_engine.verify_backup(i.backup_id).is_ok());
+                assert!(i.size > 0);
+            });
+
+            let backup_id = info.get(0).unwrap().backup_id;
+            let mut restore_option = RestoreOptions::default();
+            restore_option.set_keep_log_files(false); // true to keep log files
+            let restore_status = backup_engine.restore_from_backup(
+                &restore_path,
+                &restore_path,
+                &restore_option,
+                backup_id,
+            );
+            assert!(restore_status.is_ok());
+
+            let db_restore = DB::open_default(&restore_path).unwrap();
+            let value = db_restore.get(b"k1");
+            assert_eq!(value.unwrap().unwrap().to_utf8().unwrap(), "v1111");
+        }
     }
 }

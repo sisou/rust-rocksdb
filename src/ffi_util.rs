@@ -60,12 +60,22 @@ where
 }
 
 macro_rules! ffi_try {
-    ( $($function:ident)::*( $( $arg:expr,)* ) ) => ({
+    ( $($function:ident)::*() ) => {
+        ffi_try_impl!($($function)::*())
+    };
+
+    ( $($function:ident)::*( $arg1:expr $(, $arg:expr)* $(,)? ) ) => {
+        ffi_try_impl!($($function)::*($arg1 $(, $arg)* ,))
+    };
+}
+
+macro_rules! ffi_try_impl {
+    ( $($function:ident)::*( $($arg:expr,)*) ) => {{
         let mut err: *mut ::libc::c_char = ::std::ptr::null_mut();
-        let result = $($function)::*($($arg),*, &mut err);
+        let result = $($function)::*($($arg,)* &mut err);
         if !err.is_null() {
             return Err(Error::new($crate::ffi_util::error_message(err)));
         }
         result
-    })
+    }};
 }
