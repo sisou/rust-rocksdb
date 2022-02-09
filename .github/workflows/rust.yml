@@ -16,6 +16,7 @@ jobs:
           toolchain: 1.56.1
           components: rustfmt
           profile: minimal
+          override: true
       - name: Run rustfmt
         uses: actions-rs/cargo@v1
         with:
@@ -36,6 +37,7 @@ jobs:
           toolchain: 1.56.1
           components: clippy
           profile: minimal
+          override: true
       - name: Run clippy
         uses: actions-rs/clippy-check@v1
         with:
@@ -77,6 +79,7 @@ jobs:
           toolchain: 1.56.1
           target: ${{ matrix.target }}
           profile: minimal
+          override: true
       - name: Remove msys64 # Workaround to resolve link error with C:\msys64\mingw64\bin\libclang.dll
         if: runner.os == 'Windows'
         run: Remove-Item -LiteralPath "C:\msys64\" -Force -Recurse

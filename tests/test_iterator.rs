@@ -296,6 +296,8 @@ fn test_full_iterator() {
     }
 }
 
+// FIXME: windows
+#[cfg(not(target_os = "windows"))]
 #[test]
 fn test_iterator_outlive_db() {
     let t = trybuild::TestCases::new();

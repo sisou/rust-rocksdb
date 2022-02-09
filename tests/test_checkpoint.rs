@@ -95,6 +95,8 @@ pub fn test_multi_checkpoints() {
     assert_eq!(*cp.get(b"k6").unwrap().unwrap(), *b"v6");
 }
 
+// FIXME: windows
+#[cfg(not(target_os = "windows"))]
 #[test]
 fn test_checkpoint_outlive_db() {
     let t = trybuild::TestCases::new();
