@@ -19,10 +19,9 @@ use crate::{
 };
 
 use std::ffi::{CStr, CString};
-use std::mem;
 use std::path::Path;
 
-use libc::{self, c_char, c_int, c_uchar, c_uint, c_void, size_t};
+use libc::{self, c_char, c_double, c_int, c_uchar, c_uint, c_void, size_t};
 
 use crate::compaction_filter::{
     self, filter_callback, CompactionFilterCallback, CompactionFilterFn,
@@ -342,7 +341,18 @@ impl BlockBasedOptions {
         }
     }
 
-    pub fn set_bloom_filter(&mut self, bits_per_key: c_int, block_based: bool) {
+    /// Sets a [Bloom filter](https://github.com/facebook/rocksdb/wiki/RocksDB-Bloom-Filter)
+    /// policy to reduce disk reads.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ckb_rocksdb::BlockBasedOptions;
+    ///
+    /// let mut opts = BlockBasedOptions::default();
+    /// opts.set_bloom_filter(10.0, true);
+    /// ```
+    pub fn set_bloom_filter(&mut self, bits_per_key: c_double, block_based: bool) {
         unsafe {
             let bloom = if block_based {
                 ffi::rocksdb_filterpolicy_create_bloom(bits_per_key)
@@ -351,6 +361,56 @@ impl BlockBasedOptions {
             };
 
             ffi::rocksdb_block_based_options_set_filter_policy(self.inner, bloom);
+        }
+    }
+
+    /// Sets a [Ribbon filter](http://rocksdb.org/blog/2021/12/29/ribbon-filter.html)
+    /// policy to reduce disk reads.
+    ///
+    /// Ribbon filters use less memory in exchange for slightly more CPU usage
+    /// compared to an equivalent bloom filter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ckb_rocksdb::BlockBasedOptions;
+    ///
+    /// let mut opts = BlockBasedOptions::default();
+    /// opts.set_ribbon_filter(10.0);
+    /// ```
+    pub fn set_ribbon_filter(&mut self, bloom_equivalent_bits_per_key: c_double) {
+        unsafe {
+            let ribbon = ffi::rocksdb_filterpolicy_create_ribbon(bloom_equivalent_bits_per_key);
+            ffi::rocksdb_block_based_options_set_filter_policy(self.inner, ribbon);
+        }
+    }
+
+    /// Sets a hybrid [Ribbon filter](http://rocksdb.org/blog/2021/12/29/ribbon-filter.html)
+    /// policy to reduce disk reads.
+    ///
+    /// Uses Bloom filters before the given level, and Ribbon filters for all
+    /// other levels. This combines the memory savings from Ribbon filters
+    /// with the lower CPU usage of Bloom filters.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ckb_rocksdb::BlockBasedOptions;
+    ///
+    /// let mut opts = BlockBasedOptions::default();
+    /// opts.set_hybrid_ribbon_filter(10.0, 2);
+    /// ```
+    pub fn set_hybrid_ribbon_filter(
+        &mut self,
+        bloom_equivalent_bits_per_key: c_double,
+        bloom_before_level: c_int,
+    ) {
+        unsafe {
+            let ribbon = ffi::rocksdb_filterpolicy_create_ribbon_hybrid(
+                bloom_equivalent_bits_per_key,
+                bloom_before_level,
+            );
+            ffi::rocksdb_block_based_options_set_filter_policy(self.inner, ribbon);
         }
     }
 
@@ -738,7 +798,7 @@ impl Options {
 
         unsafe {
             let mo = ffi::rocksdb_mergeoperator_create(
-                Box::into_raw(cb) as _,
+                Box::into_raw(cb).cast::<c_void>(),
                 Some(merge_operator::destructor_callback::<F, F>),
                 Some(full_merge_callback::<F, F>),
                 Some(partial_merge_callback::<F, F>),
@@ -763,7 +823,7 @@ impl Options {
 
         unsafe {
             let mo = ffi::rocksdb_mergeoperator_create(
-                Box::into_raw(cb) as _,
+                Box::into_raw(cb).cast::<c_void>(),
                 Some(merge_operator::destructor_callback::<F, PF>),
                 Some(full_merge_callback::<F, PF>),
                 Some(partial_merge_callback::<F, PF>),
@@ -803,7 +863,7 @@ impl Options {
 
         unsafe {
             let cf = ffi::rocksdb_compactionfilter_create(
-                mem::transmute(cb),
+                Box::into_raw(cb).cast::<c_void>(),
                 Some(compaction_filter::destructor_callback::<F>),
                 Some(filter_callback::<F>),
                 Some(compaction_filter::name_callback::<F>),
@@ -826,7 +886,7 @@ impl Options {
 
         unsafe {
             let cmp = ffi::rocksdb_comparator_create(
-                mem::transmute(cb),
+                Box::into_raw(cb).cast::<c_void>(),
                 Some(comparator::destructor_callback),
                 Some(comparator::compare_callback),
                 Some(comparator::name_callback),

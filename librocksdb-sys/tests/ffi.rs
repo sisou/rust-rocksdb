@@ -289,15 +289,15 @@ unsafe extern "C" fn CFilterFilter(
 ) -> c_uchar {
     if key_length == 3 {
         if memcmp(
-            mem::transmute(key),
-            mem::transmute(cstrp!("bar")),
+            key.cast::<c_void>(),
+            cstrp!("bar").cast::<c_void>(),
             key_length,
         ) == 0
         {
             return 1;
         } else if memcmp(
-            mem::transmute(key),
-            mem::transmute(cstrp!("baz")),
+            key.cast::<c_void>(),
+            cstrp!("baz").cast::<c_void>(),
             key_length,
         ) == 0
         {
@@ -479,10 +479,10 @@ fn ffi() {
         rocksdb_block_based_options_set_block_cache(table_options, cache);
         rocksdb_options_set_block_based_table_factory(options, table_options);
 
-        let no_compression = rocksdb_no_compression;
-        rocksdb_options_set_compression(options, no_compression as i32);
+        let no_compression = rocksdb_no_compression as c_int;
+        rocksdb_options_set_compression(options, no_compression);
         rocksdb_options_set_compression_options(options, -14, -1, 0, 0);
-        let compression_levels = vec![
+        let mut compression_levels = vec![
             no_compression,
             no_compression,
             no_compression,
@@ -490,7 +490,7 @@ fn ffi() {
         ];
         rocksdb_options_set_compression_per_level(
             options,
-            mem::transmute(compression_levels.as_ptr()),
+            compression_levels.as_mut_ptr(),
             compression_levels.len() as size_t,
         );
 
@@ -606,7 +606,7 @@ fn ffi() {
             let mut pos: c_int = 0;
             rocksdb_writebatch_iterate(
                 wb,
-                mem::transmute(&mut pos),
+                (&mut pos as *mut c_int).cast::<c_void>(),
                 Some(CheckPut),
                 Some(CheckDel),
             );
@@ -808,7 +808,7 @@ fn ffi() {
                     Some(FilterName),
                 )
             } else {
-                rocksdb_filterpolicy_create_bloom(10)
+                rocksdb_filterpolicy_create_bloom(10.0)
             };
 
             rocksdb_block_based_options_set_filter_policy(table_options, policy);

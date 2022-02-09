@@ -272,7 +272,9 @@ pub fn test_optimistic_transaction_merge() {
         trans.merge(b"k1", b"c").unwrap();
         trans.merge(b"k1", b"d").unwrap();
         trans.merge(b"k1", b"efg").unwrap();
-        trans.get(b"k1").err().unwrap();
+        // https://github.com/facebook/rocksdb/blob/v6.28.2/HISTORY.md#6200-2021-04-16
+        // since 6.20.0, .transaction return the correct merged result.
+        assert_eq!(&*trans.get(b"k1").unwrap().unwrap(), b"abcdefg");
         trans.commit().unwrap();
 
         let k1 = trans.get(b"k1").unwrap().unwrap();
