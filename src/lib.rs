@@ -70,6 +70,7 @@ pub mod backup;
 pub mod checkpoint;
 pub mod column_family;
 pub mod compaction_filter;
+pub mod compaction_filter_factory;
 mod comparator;
 mod db;
 mod db_iterator;

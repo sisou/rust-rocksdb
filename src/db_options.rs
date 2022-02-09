@@ -23,9 +23,8 @@ use std::path::Path;
 
 use libc::{self, c_char, c_double, c_int, c_uchar, c_uint, c_void, size_t};
 
-use crate::compaction_filter::{
-    self, filter_callback, CompactionFilterCallback, CompactionFilterFn,
-};
+use crate::compaction_filter::{self, CompactionFilterCallback, CompactionFilterFn};
+use crate::compaction_filter_factory::{self, CompactionFilterFactory};
 use crate::comparator::{self, ComparatorCallback, CompareFn};
 use crate::ffi;
 use crate::merge_operator::{
@@ -864,11 +863,37 @@ impl Options {
         unsafe {
             let cf = ffi::rocksdb_compactionfilter_create(
                 Box::into_raw(cb).cast::<c_void>(),
-                Some(compaction_filter::destructor_callback::<F>),
-                Some(filter_callback::<F>),
-                Some(compaction_filter::name_callback::<F>),
+                Some(compaction_filter::destructor_callback::<CompactionFilterCallback<F>>),
+                Some(compaction_filter::filter_callback::<CompactionFilterCallback<F>>),
+                Some(compaction_filter::name_callback::<CompactionFilterCallback<F>>),
             );
             ffi::rocksdb_options_set_compaction_filter(self.inner, cf);
+        }
+    }
+
+    /// This is a factory that provides compaction filter objects which allow
+    /// an application to modify/delete a key-value during background compaction.
+    ///
+    /// A new filter will be created on each compaction run.  If multi-threaded
+    /// compaction is being used, each created CompactionFilter will only be used
+    /// from a single thread and so does not need to be thread-safe.
+    ///
+    /// Default: nullptr
+    pub fn set_compaction_filter_factory<F>(&mut self, factory: F)
+    where
+        F: CompactionFilterFactory + 'static,
+    {
+        let factory = Box::new(factory);
+
+        unsafe {
+            let cff = ffi::rocksdb_compactionfilterfactory_create(
+                Box::into_raw(factory) as *mut c_void,
+                Some(compaction_filter_factory::destructor_callback::<F>),
+                Some(compaction_filter_factory::create_compaction_filter_callback::<F>),
+                Some(compaction_filter_factory::name_callback::<F>),
+            );
+
+            ffi::rocksdb_options_set_compaction_filter_factory(self.inner, cff);
         }
     }
 
