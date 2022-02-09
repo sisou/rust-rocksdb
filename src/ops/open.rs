@@ -13,6 +13,7 @@
 // limitations under the License.
 //
 
+use std::iter;
 use std::path::Path;
 
 use crate::open_raw::{OpenRaw, OpenRawInput};
@@ -41,6 +42,7 @@ pub trait Open: OpenRaw {
             path: path.as_ref(),
             column_families: vec![],
             open_descriptor: descriptor,
+            outlive: vec![opts.outlive.clone()],
         };
 
         Self::open_raw(input)
@@ -83,11 +85,16 @@ pub trait OpenCF: OpenRaw {
         P: AsRef<Path>,
         I: IntoIterator<Item = ColumnFamilyDescriptor>,
     {
+        let column_families: Vec<_> = cfs.into_iter().collect();
+        let outlive = iter::once(opts.outlive.clone())
+            .chain(column_families.iter().map(|cf| cf.options.outlive.clone()))
+            .collect();
         let input = OpenRawInput {
             options: opts,
             path: path.as_ref(),
-            column_families: cfs.into_iter().collect(),
+            column_families,
             open_descriptor: descriptor,
+            outlive,
         };
 
         Self::open_raw(input)

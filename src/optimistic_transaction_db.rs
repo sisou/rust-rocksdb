@@ -1,6 +1,6 @@
 use crate::{
     db_iterator::DBRawIterator,
-    db_options::ReadOptions,
+    db_options::{OptionsMustOutliveDB, ReadOptions},
     db_vector::DBVector,
     handle::{ConstHandle, Handle},
     open_raw::{OpenRaw, OpenRawFFI},
@@ -22,6 +22,7 @@ pub struct OptimisticTransactionDB {
     path: PathBuf,
     cfs: BTreeMap<String, ColumnFamily>,
     base_db: *mut ffi::rocksdb_t,
+    _outlive: Vec<OptionsMustOutliveDB>,
 }
 
 impl Handle<ffi::rocksdb_optimistictransactiondb_t> for OptimisticTransactionDB {
@@ -64,6 +65,7 @@ impl OpenRaw for OptimisticTransactionDB {
         _open_descriptor: Self::Descriptor,
         pointer: *mut Self::Pointer,
         column_families: I,
+        outlive: Vec<OptionsMustOutliveDB>,
     ) -> Result<Self, Error>
     where
         I: IntoIterator<Item = (String, *mut ffi::rocksdb_column_family_handle_t)>,
@@ -78,6 +80,7 @@ impl OpenRaw for OptimisticTransactionDB {
             cfs,
             path,
             base_db,
+            _outlive: outlive,
         })
     }
 }

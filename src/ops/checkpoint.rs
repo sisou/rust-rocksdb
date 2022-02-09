@@ -1,9 +1,10 @@
 use crate::ffi;
 use crate::{checkpoint::Checkpoint, handle::Handle, Error};
+use std::marker::PhantomData;
 
 pub trait CreateCheckpointObject {
     unsafe fn create_checkpoint_object_raw(&self) -> Result<*mut ffi::rocksdb_checkpoint_t, Error>;
-    fn create_checkpoint_object(&self) -> Result<Checkpoint, Error> {
+    fn create_checkpoint_object(&self) -> Result<Checkpoint<'_>, Error> {
         let checkpoint: *mut ffi::rocksdb_checkpoint_t;
 
         unsafe { checkpoint = self.create_checkpoint_object_raw()? };
@@ -12,7 +13,10 @@ pub trait CreateCheckpointObject {
             return Err(Error::new("Could not create checkpoint object.".to_owned()));
         }
 
-        Ok(Checkpoint { inner: checkpoint })
+        Ok(Checkpoint {
+            inner: checkpoint,
+            _db: PhantomData,
+        })
     }
 }
 

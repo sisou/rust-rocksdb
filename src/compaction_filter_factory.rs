@@ -121,7 +121,7 @@ mod tests {
 
     #[test]
     fn compaction_filter_factory_test() {
-        use crate::{ops::*, Options, DB, TemporaryDBPath};
+        use crate::{ops::*, Options, TemporaryDBPath, DB};
 
         let path = TemporaryDBPath::new();
         let mut opts = Options::default();

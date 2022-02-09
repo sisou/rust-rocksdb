@@ -156,7 +156,7 @@ fn test_filter(level: u32, key: &[u8], value: &[u8]) -> Decision {
 
 #[test]
 fn compaction_filter_test() {
-    use crate::{ops::*, Options, DB, TemporaryDBPath};
+    use crate::{ops::*, Options, TemporaryDBPath, DB};
 
     let path = TemporaryDBPath::new();
     let mut opts = Options::default();

@@ -14,7 +14,10 @@
 
 use std::{ffi::CStr, path};
 
-use crate::{db_options::new_cache, ffi, ffi_util, ColumnFamilyDescriptor, Error, Options};
+use crate::{
+    db_options::{Cache, OptionsMustOutliveDB},
+    ffi, ffi_util, ColumnFamilyDescriptor, Error, Options,
+};
 
 #[derive(Clone)]
 pub struct FullOptions {
@@ -36,11 +39,8 @@ impl FullOptions {
             "Failed to convert path to CString when load config file.",
         )?;
 
-        let cache = if let Some(cache_size) = cache_size {
-            new_cache(cache_size)
-        } else {
-            unsafe { ffi::rocksdb_null_cache() }
-        };
+        let cache = cache_size
+            .map(|cache_size| Cache::new_lru_cache(cache_size).expect("create RocksDB cache"));
 
         unsafe {
             let env = ffi::rocksdb_create_default_env();
@@ -48,7 +48,10 @@ impl FullOptions {
                 cpath.as_ptr(),
                 env,
                 ignore_unknown_options,
-                cache,
+                cache
+                    .as_ref()
+                    .map(|c| c.0.inner)
+                    .unwrap_or_else(|| ffi::rocksdb_null_cache()),
             ));
             ffi::rocksdb_env_destroy(env);
             let db_opts = result.db_opts;
@@ -60,14 +63,28 @@ impl FullOptions {
                 let name_cstr = CStr::from_ptr(name_raw as *const _);
                 let name = String::from_utf8_lossy(name_cstr.to_bytes());
                 let cf_opts_inner = ffi::rocksdb_column_family_descriptors_options(cf_descs, index);
+                let outlive = OptionsMustOutliveDB {
+                    row_cache: cache.clone(),
+                    ..Default::default()
+                };
                 let cf_opts = Options {
                     inner: cf_opts_inner,
+                    outlive,
                 };
                 cf_descriptors.push(ColumnFamilyDescriptor::new(name, cf_opts));
             }
             ffi::rocksdb_column_family_descriptors_destroy(cf_descs);
+
+            let outlive = OptionsMustOutliveDB {
+                row_cache: cache,
+                ..Default::default()
+            };
+
             Ok(Self {
-                db_opts: Options { inner: db_opts },
+                db_opts: Options {
+                    inner: db_opts,
+                    outlive,
+                },
                 cf_descriptors,
             })
         }

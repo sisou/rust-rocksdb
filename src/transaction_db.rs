@@ -1,4 +1,5 @@
 use crate::{
+    db_options::OptionsMustOutliveDB,
     db_vector::DBVector,
     ffi_util::to_cstring,
     handle::{ConstHandle, Handle},
@@ -21,6 +22,7 @@ pub struct TransactionDB {
     inner: *mut ffi::rocksdb_transactiondb_t,
     path: PathBuf,
     cfs: BTreeMap<String, ColumnFamily>,
+    _outlive: Vec<OptionsMustOutliveDB>,
 }
 
 impl TransactionDB {
@@ -70,6 +72,7 @@ impl OpenRaw for TransactionDB {
         _open_descriptor: Self::Descriptor,
         pointer: *mut Self::Pointer,
         column_families: I,
+        outlive: Vec<OptionsMustOutliveDB>,
     ) -> Result<Self, Error>
     where
         I: IntoIterator<Item = (String, *mut ffi::rocksdb_column_family_handle_t)>,
@@ -82,6 +85,7 @@ impl OpenRaw for TransactionDB {
             inner: pointer,
             path,
             cfs,
+            _outlive: outlive,
         })
     }
 }
