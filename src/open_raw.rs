@@ -23,13 +23,14 @@ use std::mem;
 use std::path::{Path, PathBuf};
 use std::ptr;
 
-use crate::{ColumnFamilyDescriptor, Error, Options};
+use crate::{db_options::OptionsMustOutliveDB, ColumnFamilyDescriptor, Error, Options};
 
 pub struct OpenRawInput<'a, T> {
     pub(crate) options: &'a Options,
     pub(crate) path: &'a Path,
     pub(crate) column_families: Vec<ColumnFamilyDescriptor>,
     pub(crate) open_descriptor: T,
+    pub(crate) outlive: Vec<OptionsMustOutliveDB>,
 }
 
 pub struct OpenRawFFI<'a, T> {
@@ -53,6 +54,7 @@ pub trait OpenRaw: Sized {
         open_descriptor: Self::Descriptor,
         pointer: *mut Self::Pointer,
         column_families: I,
+        outlive: Vec<OptionsMustOutliveDB>,
     ) -> Result<Self, Error>
     where
         I: IntoIterator<Item = (String, *mut ffi::rocksdb_column_family_handle_t)>;
@@ -110,6 +112,7 @@ pub trait OpenRaw: Sized {
             input.open_descriptor,
             pointer,
             column_families,
+            input.outlive,
         )
     }
 }

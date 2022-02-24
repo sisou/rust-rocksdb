@@ -20,6 +20,7 @@ use crate::ops::*;
 /// [1]: https://github.com/facebook/rocksdb/wiki/Checkpoints
 use crate::{Error, DB};
 use std::ffi::CString;
+use std::marker::PhantomData;
 use std::path::Path;
 
 /// Undocumented parameter for `ffi::rocksdb_checkpoint_create` function. Zero by default.
@@ -27,16 +28,17 @@ const LOG_SIZE_FOR_FLUSH: u64 = 0_u64;
 
 /// Database's checkpoint object.
 /// Used to create checkpoints of the specified DB from time to time.
-pub struct Checkpoint {
+pub struct Checkpoint<'db> {
     pub(crate) inner: *mut ffi::rocksdb_checkpoint_t,
+    pub(crate) _db: PhantomData<&'db ()>,
 }
 
-impl Checkpoint {
+impl<'db> Checkpoint<'db> {
     /// Creates new checkpoint object for specific DB.
     ///
     /// Does not actually produce checkpoints, call `.create_checkpoint()` method to produce
     /// a DB checkpoint.
-    pub fn new(db: &DB) -> Result<Checkpoint, Error> {
+    pub fn new(db: &'db DB) -> Result<Checkpoint<'db>, Error> {
         db.create_checkpoint_object()
     }
 
@@ -64,7 +66,7 @@ impl Checkpoint {
     }
 }
 
-impl Drop for Checkpoint {
+impl<'db> Drop for Checkpoint<'db> {
     fn drop(&mut self) {
         unsafe {
             ffi::rocksdb_checkpoint_object_destroy(self.inner);

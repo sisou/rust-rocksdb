@@ -18,7 +18,7 @@ use crate::ffi_util;
 
 use crate::{
     db_iterator::DBRawIterator,
-    db_options::ReadOptions,
+    db_options::{OptionsMustOutliveDB, ReadOptions},
     handle::Handle,
     open_raw::{OpenRaw, OpenRawFFI},
     ops, ColumnFamily, Error,
@@ -33,6 +33,7 @@ pub struct SecondaryDB {
     pub(crate) inner: *mut ffi::rocksdb_t,
     cfs: BTreeMap<String, ColumnFamily>,
     path: PathBuf,
+    _outlive: Vec<OptionsMustOutliveDB>,
 }
 
 impl SecondaryDB {
@@ -109,6 +110,7 @@ impl OpenRaw for SecondaryDB {
         _open_descriptor: Self::Descriptor,
         pointer: *mut Self::Pointer,
         column_families: I,
+        outlive: Vec<OptionsMustOutliveDB>,
     ) -> Result<Self, Error>
     where
         I: IntoIterator<Item = (String, *mut ffi::rocksdb_column_family_handle_t)>,
@@ -121,6 +123,7 @@ impl OpenRaw for SecondaryDB {
             inner: pointer,
             cfs,
             path,
+            _outlive: outlive,
         })
     }
 }
