@@ -39,6 +39,8 @@ impl Handle<ffi::rocksdb_transactiondb_t> for TransactionDB {
 
 impl Open for TransactionDB {}
 
+impl OpenCF for TransactionDB {}
+
 impl OpenRaw for TransactionDB {
     type Pointer = ffi::rocksdb_transactiondb_t;
     type Descriptor = TransactionDBOptions;
